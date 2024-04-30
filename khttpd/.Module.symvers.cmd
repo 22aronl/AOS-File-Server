@@ -1,0 +1,1 @@
+savedcmd_/home/vespasion/Downloads/khttpd/Module.symvers :=  scripts/mod/modpost -m -a      -o /home/vespasion/Downloads/khttpd/Module.symvers -T /home/vespasion/Downloads/khttpd/modules.order -i Module.symvers -e 
