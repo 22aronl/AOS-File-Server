@@ -5,7 +5,7 @@
 APP = server
 
 # all source are stored in SRCS-y
-SRCS-y := dpdk_server.c
+SRCS-y := initalize_virt.c
 
 PKGCONF ?= pkg-config
 

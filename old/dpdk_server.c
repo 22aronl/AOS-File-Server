@@ -1,6 +1,7 @@
 #include <rte_eal.h>
 #include <rte_ethdev.h>
 #include <rte_mbuf.h>
+#include <rte_ether.h>
 
 #include <stdio.h>
 
@@ -94,6 +95,33 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 	return 0;
 }
 
+void* packet_handler(struct rte_mbuf* pkt) {
+
+	struct rte_ether_hdr *eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
+
+	uint16_t ether_type = rte_be_to_cpu_16(eth_hdr->ether_type);
+	//printf("Received packet with ether type %u\n", ether_type);
+
+	//ether_type is IPv6, parse its destination port
+	if(ether_type == 0x86DD || ether_type == 0x0800) {
+		struct rte_ipv6_hdr *ipv6_hdr = (struct rte_ipv6_hdr *)(eth_hdr + 1);
+		uint16_t next_header = ipv6_hdr->proto;
+		printf("Received packet with next header %u\n", next_header);
+
+		//next header is UDP, parse its destination port
+		if(next_header == 17) {
+			struct rte_udp_hdr *udp_hdr = (struct rte_udp_hdr *)(ipv6_hdr + 1);
+			uint16_t dst_port = rte_be_to_cpu_16(udp_hdr->dst_port);
+			printf("Received packet with destination port %u\n", dst_port);
+		}
+	} else {
+		printf("Received packet with ether type %u\n", ether_type);
+		printf("Weird unsupported packet\n");
+		return NULL;
+	}
+
+}
+
 
 static __rte_noreturn void
 lcore_main(void)
@@ -130,12 +158,19 @@ lcore_main(void)
 
 			if (unlikely(nb_rx == 0))
 				continue;
+			
+			packet_handler(bufs[0]);
+			//print packet 0 information
+			fprintf(stderr, "Received %u packets\n", nb_rx);
+			// printf("Received from port location %u\n", bufs[0]->port);
+			// printf("Received packet length %u\n", bufs[0]->pkt_len);
+			// printf("Received packet data %p\n", bufs[0]->buf_addr);
 
+			// printf("Received from port location %u\n", bufs[0]->port);
 
 			/* Send burst of TX packets, to second port of pair. */
 			const uint16_t nb_tx = rte_eth_tx_burst(port, 0,
 					bufs, nb_rx);
-			if(nb_tx > 0) printf("Sent %u packets for port %u\n", nb_tx, port);
 			/* Free any unsent packets. */
 			if (unlikely(nb_tx < nb_rx)) {
 				uint16_t buf;
